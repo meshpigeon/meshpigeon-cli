@@ -6,6 +6,7 @@ import dev.meshpigeon.cli.core.ClearOutput
 import dev.meshpigeon.cli.core.CommandOutput
 import dev.meshpigeon.cli.core.DeviceSettingsOutput
 import dev.meshpigeon.cli.core.CommandResult
+import dev.meshpigeon.cli.core.DbOutput
 import dev.meshpigeon.cli.core.DoctorOutput
 import dev.meshpigeon.cli.core.EmptyOutput
 import dev.meshpigeon.cli.core.ErrorOutput
@@ -70,6 +71,7 @@ public class Renderer(
         is HistoryOutput -> historyLines(output)
         is LinkListOutput -> linkLines(output)
         is DoctorOutput -> doctorLines(output)
+        is DbOutput -> dbLines(output)
         is ClearOutput -> ""
     }
 
@@ -205,6 +207,17 @@ public class Renderer(
             }
         }
 
+        is DbOutput -> buildJsonObject {
+            put("path", output.db.path)
+            put("sizeBytes", output.db.sizeBytes)
+            put("schemaVersion", output.db.schemaVersion)
+            put("journalMode", output.db.journalMode)
+            put("radios", output.db.radios)
+            put("links", output.db.links)
+            put("pinsSealed", output.db.pinsSealed)
+            put("keyPresent", output.db.keyPresent)
+            put("heldByPid", output.db.heldByPid)
+        }
         is TextOutput -> buildJsonObject { put("text", output.text) }
         is ErrorOutput -> buildJsonObject {
             put("command", output.command)
@@ -293,6 +306,30 @@ public class Renderer(
 
     private fun linkLines(output: LinkListOutput): String =
         output.links.joinToString("\n") { "${it.name} · ${it.kind} · ${it.target}" }
+
+    private fun dbLines(output: DbOutput): String {
+        val db = output.db
+        return pairs(
+            messages.t("label.db-path") to db.path,
+            messages.t("label.db-size") to formatBytes(db.sizeBytes),
+            messages.t("label.db-schema") to db.schemaVersion.toString(),
+            messages.t("label.db-journal") to db.journalMode,
+            messages.t("label.db-radios") to db.radios.toString(),
+            messages.t("label.db-links") to db.links.toString(),
+            messages.t("label.db-pins") to
+                if (db.pinsSealed == 0) messages.t("db.pins.none") else db.pinsSealed.toString(),
+            messages.t("label.db-key") to
+                if (db.keyPresent) messages.t("db.key.present") else messages.t("db.key.absent"),
+            messages.t("label.db-lock") to messages.t("db.lock.held", "pid" to db.heldByPid),
+        )
+    }
+
+    /** Bytes as a person reads them. Whole units: a page count is not a stopwatch. */
+    private fun formatBytes(bytes: Long): String = when {
+        bytes >= 1_048_576 -> "${bytes / 1_048_576} MB"
+        bytes >= 1_024 -> "${bytes / 1_024} kB"
+        else -> "$bytes B"
+    }
 
     private fun doctorLines(output: DoctorOutput): String = pairs(
         messages.t("label.version") to output.version,

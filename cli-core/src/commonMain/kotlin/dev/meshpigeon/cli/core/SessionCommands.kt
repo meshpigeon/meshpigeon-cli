@@ -24,7 +24,7 @@ public class SessionCommands(
     private val version: String,
 ) {
     /** The whole tree, as one declaration. */
-    public fun tree(): CommandTree = CommandTree(topLevel = sessionCommands(), groups = radioAndLinkCommands())
+    public fun tree(): CommandTree = CommandTree(topLevel = sessionCommands(), groups = commandGroups())
 
     private fun sessionCommands(): List<CommandSpec> = listOf(
         CommandSpec(
@@ -83,7 +83,7 @@ public class SessionCommands(
         ),
     )
 
-    private fun radioAndLinkCommands(): List<CommandGroup> = listOf(radioGroup(), linkGroup())
+    private fun commandGroups(): List<CommandGroup> = listOf(radioGroup(), linkGroup(), dbGroup())
 
     private fun radioGroup() = CommandGroup(
         name = "radio",
@@ -196,6 +196,22 @@ public class SessionCommands(
         run = { context, _ -> listLinks(context) },
     )
 
+    private fun dbGroup() = CommandGroup(
+        name = "db",
+        summaryKey = "cmd.db",
+        subcommands = listOf(
+            CommandSpec(
+                name = "info",
+                summaryKey = "cmd.db.info",
+                run = { context, _ -> dbInfo(context) },
+            ),
+        ),
+        // `/db` on its own shows the report: the one thing everyone opens the
+        // database to ask. The other subcommands the plan lists (migrate,
+        // vacuum, export, restore, check) arrive as they are built.
+        run = { context, _ -> dbInfo(context) },
+    )
+
     // ── session ─────────────────────────────────────────────────────────────
 
     private suspend fun help(context: CommandContext): CommandResult =
@@ -231,6 +247,9 @@ public class SessionCommands(
         ),
     )
 
+    private fun dbInfo(context: CommandContext): CommandResult =
+        CommandResult.ok(DbOutput(context.db.report()))
+
     // ── radio ───────────────────────────────────────────────────────────────
 
     private suspend fun connect(context: CommandContext, args: List<String>): CommandResult {
@@ -239,7 +258,11 @@ public class SessionCommands(
             ?: return usage(context, "/radio connect", "usage.unknown_argument", "argument" to target)
         return try {
             val info = context.radio.connect(descriptor, pin)
-            links.remember(descriptor)
+            // A connect writes down what the radio is and that this link worked,
+            // whether or not a person saved the target: the facts are worth
+            // having either way, and `persistentId` is the target, so it is the
+            // same row `/link add` would create.
+            links.recordConnection(descriptor, facts(info))
             CommandResult.ok(
                 TextOutput(
                     context.messages.t(
@@ -258,6 +281,7 @@ public class SessionCommands(
             } else {
                 describe(context, error)
             }
+            links.noteOutcome(args[0], connected = false, error = reason)
             failure(context, "/radio connect", reason)
         }
     }
@@ -383,12 +407,16 @@ public class SessionCommands(
     private suspend fun addLink(context: CommandContext, name: String, target: String): CommandResult {
         val descriptor = LinkTarget.parse(target)
             ?: return usage(context, "/link add", "usage.unknown_argument", "argument" to target)
-        if (links.contains(name)) {
-            return failure(context, "/link add", context.messages.t("link.duplicate", "name" to name))
+        // What happened is the message: "added", "linked" and "already there"
+        // are three different things a person did, and one sentence for all
+        // three would hide which one it was.
+        val key = when (links.add(name, descriptor)) {
+            AddOutcome.Created -> "link.added"
+            AddOutcome.Linked -> "link.linked"
+            AddOutcome.AlreadyThere -> "link.already"
         }
-        links.add(name, descriptor)
         return CommandResult.ok(
-            TextOutput(context.messages.t("link.added", "name" to name, "target" to linkLabel(descriptor))),
+            TextOutput(context.messages.t(key, "name" to name, "target" to linkLabel(descriptor))),
         )
     }
 
@@ -410,12 +438,15 @@ public class SessionCommands(
 
     private suspend fun testLink(context: CommandContext, name: String): CommandResult =
         reporting(context, "/link test") {
-            val link = links.all().firstOrNull { it.name == name }
+            // The preferred link, or the first: a radio can be reached more than
+            // one way, and a test means "the way I would use".
+            val link = links.find(name)
                 ?: return@reporting failure(context, "/link test", context.messages.t("link.unknown", "name" to name))
-            // A TCP link is tested by opening it: connect, read one status, close.
+            // A link is tested by opening it: connect, read one status, close.
             context.radio.connect(link.descriptor, links.pinFor(name))
             val status = context.radio.status()
             context.radio.disconnect()
+            links.noteOutcome(name, connected = true)
             CommandResult.ok(
                 TextOutput(
                     context.messages.t(
@@ -474,8 +505,8 @@ public class SessionCommands(
      * shown as its label: a label is for a person, and `/dev/ttyACM0` read as a
      * target is a path with no scheme, which parses as nothing at all.
      */
-    private fun resolveTarget(context: CommandContext, name: String, pin: String?): Pair<String, String?> =
-        links.all().firstOrNull { it.name == name }
+    private suspend fun resolveTarget(context: CommandContext, name: String, pin: String?): Pair<String, String?> =
+        links.find(name)
             ?.let { LinkTarget.format(it.descriptor) to (pin ?: links.pinFor(name)) }
             ?: (name to pin)
 
@@ -597,6 +628,25 @@ public data class HistoryOutput(
 /** `/link list`'s model. */
 public data class LinkListOutput(val links: List<LinkView>) : CommandOutput
 
+/** Everything `/db info` shows about the file: what it is, and what it holds. */
+public data class DbReport(
+    val path: String,
+    val sizeBytes: Long,
+    /** `PRAGMA user_version` — the one schema counter. */
+    val schemaVersion: Long,
+    /** `wal`, or whatever the file is actually in. */
+    val journalMode: String,
+    val radios: Int,
+    val links: Int,
+    /** Devices with a sealed PIN. Zero until P3 supplies the cipher. */
+    val pinsSealed: Int,
+    val keyPresent: Boolean,
+    val heldByPid: Int,
+)
+
+/** `/db`'s model. */
+public data class DbOutput(val db: DbReport) : CommandOutput
+
 private fun deviceView(info: dev.meshpigeon.core.transport.DeviceInfo): DeviceView = DeviceView(
     board = info.boardName,
     firmware = info.firmwareVersion,
@@ -629,6 +679,18 @@ private fun packetView(packet: StoredPacket): PacketView = PacketView(
     hex = Hex.encode(packet.raw),
     rssi = packet.rssiDbm,
     snr = packet.snr,
+)
+
+/** What a successful connect learned about the device, for the radio's row. */
+private fun facts(info: dev.meshpigeon.core.transport.DeviceInfo): RadioFacts = RadioFacts(
+    boardName = info.boardName,
+    firmwareVersion = info.firmwareVersion,
+    specVersion = info.specVersion,
+    supportsWifi = info.supportsWifi,
+    supportsBle = info.supportsBle,
+    supportsUsb = info.supportsUsb,
+    batteryMilliVolts = info.batteryMilliVolts,
+    noiseFloorDbm = info.noiseFloorDbm,
 )
 
 private fun formatDuration(millis: Long): String {

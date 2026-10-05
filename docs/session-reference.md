@@ -30,12 +30,15 @@ $ mp
 ## Targets
 
 A link is named once and then used as a target: `/radio connect bench`. A bare
-`host:port` works too, as does `usb:/dev/ttyACM0` once the USB link lands.
+`host:port` works too, as does `usb:/dev/ttyACM0`. A name is a *radio*, and a
+radio can be reached more than one way: `/link add bench usb:/dev/ttyACM0` after
+`/link add bench tcp://10.0.0.5:5000` adds a second link to the same bench rather
+than a second bench. `/radio connect bench` uses the preferred one.
 
 ## Commands
 
 ```
-/help  /quit  /exit  /version  /json  /color  /clear  /doctor
+/help  /quit  /exit  /version  /json  /color  /clear  /doctor  /db
 
 /radio   connect <target> [pin]      open a link to a radio
          disconnect                  close the link
@@ -52,6 +55,8 @@ A link is named once and then used as a target: `/radio connect bench`. A bare
          <alone>                     what /radio can do
 
 /link    list · add <name> <target> · remove <name> · test <name>
+
+/db      info                        what the database holds
 ```
 
 `/help` is generated from the same declaration that parses the input and
@@ -93,6 +98,14 @@ Everything a bug report needs in one place: version, language, profile, home, th
 output modes, the configured links, the phase of the connection, and what the
 radio last reported. In `/json` it is machine-readable, which is the first thing
 to paste into an issue.
+
+## `/db`
+
+What the one database holds, and how it is kept: its path and size, the schema
+version (`PRAGMA user_version`), the journal mode, how many radios and links are
+saved, how many devices have a sealed PIN (none until the cipher arrives in P3),
+whether the master key exists yet, and which process holds the write lock. The
+session opens the database at start-up and releases the lock on the way out.
 
 ## Where files live
 

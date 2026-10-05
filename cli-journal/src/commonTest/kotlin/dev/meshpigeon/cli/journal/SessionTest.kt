@@ -2,6 +2,8 @@ package dev.meshpigeon.cli.journal
 
 import dev.meshpigeon.cli.core.CoreRadioController
 import dev.meshpigeon.cli.core.CommandContext
+import dev.meshpigeon.cli.core.DatabaseStatus
+import dev.meshpigeon.cli.core.DbReport
 import dev.meshpigeon.cli.core.ExitStatus
 import dev.meshpigeon.cli.core.LinkBook
 import dev.meshpigeon.cli.core.SessionCommands
@@ -10,6 +12,7 @@ import dev.meshpigeon.cli.i18n.Catalog
 import dev.meshpigeon.cli.i18n.EnglishCatalog
 import dev.meshpigeon.cli.i18n.Messages
 import dev.meshpigeon.core.testing.FakeRadio
+import dev.meshpigeon.core.testing.InMemoryRadioRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -45,7 +48,7 @@ class SessionTest {
         val messages = Messages(language = "en", catalogs = listOf(Catalog("en", EnglishCatalog.messages)))
         val state = SessionState(version = "test", home = "/tmp/mp", profile = "default")
         val session = Session(
-            tree = SessionCommands(LinkBook(), "test").tree(),
+            tree = SessionCommands(LinkBook(InMemoryRadioRepository()), "test").tree(),
             context = CommandContext(
                 messages = messages,
                 radio = CoreRadioController(
@@ -54,6 +57,22 @@ class SessionTest {
                     linkFactory = linkFactory ?: { radio.link },
                 ),
                 state = state,
+                // A test drives commands, not a file. `/db` is handed a fixed
+                // report to read — the shape of an empty, healthy database — so
+                // a test can assert on what the session does with one.
+                db = object : DatabaseStatus {
+                    override fun report(): DbReport = DbReport(
+                        path = "/tmp/mp/meshpigeon.db",
+                        sizeBytes = 8_192,
+                        schemaVersion = 1,
+                        journalMode = "wal",
+                        radios = 0,
+                        links = 0,
+                        pinsSealed = 0,
+                        keyPresent = false,
+                        heldByPid = 4242,
+                    )
+                },
             ),
             input = { script.drop(consumed.size).firstOrNull().also { if (it != null) consumed += it } },
             output = { output += it },
@@ -86,6 +105,16 @@ class SessionTest {
             "an unfilled placeholder reached the terminal:\n$said",
         )
         assertEquals(ExitStatus.USAGE, run.session.exitStatus)
+    }
+
+    @Test
+    fun db_describes_the_file_without_leaking_a_placeholder() {
+        val run = drive(listOf("/db info"))
+        val said = run.output.joinToString("\n")
+        assertTrue(said.contains("meshpigeon.db"), "the path is named:\n$said")
+        assertTrue(said.contains("wal"), "the journal mode is named:\n$said")
+        assertFalse(said.contains("{"), "an unfilled placeholder reached the terminal:\n$said")
+        assertEquals(ExitStatus.OK, run.session.exitStatus)
     }
 
     @Test

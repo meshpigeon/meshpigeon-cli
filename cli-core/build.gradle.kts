@@ -30,6 +30,9 @@ kotlin {
         commonTest.dependencies {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)
+            // `InMemoryRadioRepository`, so the command tree can be built against
+            // a repository that is not a database.
+            implementation("dev.meshpigeon:meshpigeon-core-testing:0.1.0-SNAPSHOT")
         }
     }
 }

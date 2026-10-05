@@ -215,11 +215,26 @@ public val LinkState.isOpen: Boolean get() = this is LinkState.Open
 public fun StoredPacket.hex(): String =
     dev.meshpigeon.core.common.Hex.encode(raw)
 
+/**
+ * The database, as a session's commands see it.
+ *
+ * A command reports on the file; it never opens it, never names its driver and
+ * never writes SQL. Opening, locking and querying are the app's and
+ * `core-storage`'s jobs. What crosses into the session is a plain [DbReport],
+ * so the commands, the renderer and the tests never learn there is SQLite
+ * underneath — which is the same line `DeviceView` draws around a `DeviceInfo`.
+ */
+public interface DatabaseStatus {
+    /** What the file looks like right now. */
+    public fun report(): DbReport
+}
+
 /** The messages and flags a session's commands render with. */
 public class CommandContext(
     public val messages: Messages,
     public val radio: RadioController,
     public val state: SessionState,
+    public val db: DatabaseStatus,
 )
 
 /**

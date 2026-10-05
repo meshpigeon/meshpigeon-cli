@@ -30,8 +30,10 @@ public object EnglishCatalog {
         "cmd.link.add" to "add a link",
         "cmd.link.remove" to "remove a link",
         "cmd.link.test" to "open a link and report what it says",
+        "cmd.db.info" to "show what the database holds",
         "cmd.radio" to "the radios this session can reach",
         "cmd.link" to "the links this session knows about",
+        "cmd.db" to "the session's database",
         // session
         "session.banner" to "MeshPigeon {version} · {identity} · {radio}",
         "session.banner.identity.none" to "no identity",
@@ -80,8 +82,14 @@ public object EnglishCatalog {
         "link.removed" to "link {name} removed",
         "link.unknown" to "no link called {name}",
         "link.transport_missing" to "no {transport} link in this build yet",
-        "link.duplicate" to "a link called {name} already exists",
+        "link.linked" to "link {name} → {target} (another way to reach it)",
+        "link.already" to "{name} already reaches {target}",
         "link.list.header" to "{name} · {kind} · {target}",
+        // database
+        "db.pins.none" to "none — sealing arrives in P3",
+        "db.key.present" to "present",
+        "db.key.absent" to "absent",
+        "db.lock.held" to "held by this session (pid {pid})",
         // errors and usage
         "error.timeout" to "{what} timed out after {after}",
         "usage.missing_argument" to "{command} needs {argument}",
@@ -125,6 +133,15 @@ public object EnglishCatalog {
         "label.color" to "color",
         "label.phase" to "phase",
         "label.links" to "links",
+        "label.db-path" to "path",
+        "label.db-size" to "size",
+        "label.db-schema" to "schema",
+        "label.db-journal" to "journal",
+        "label.db-radios" to "radios",
+        "label.db-links" to "links",
+        "label.db-pins" to "sealed pins",
+        "label.db-key" to "key",
+        "label.db-lock" to "lock",
     )
 }
 

@@ -1,5 +1,6 @@
 package dev.meshpigeon.cli.core
 
+import dev.meshpigeon.core.testing.InMemoryRadioRepository
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -37,7 +38,7 @@ class TokenizeTest {
 }
 
 class CommandTreeTest {
-    private val tree = SessionCommands(LinkBook(), "test").tree()
+    private val tree = SessionCommands(LinkBook(InMemoryRadioRepository()), "test").tree()
 
     @Test
     fun resolves_a_top_level_command() {

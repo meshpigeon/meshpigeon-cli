@@ -1,6 +1,8 @@
 package dev.meshpigeon.cli.app
 
 import dev.meshpigeon.cli.core.CoreRadioController
+import dev.meshpigeon.cli.core.DatabaseStatus
+import dev.meshpigeon.cli.core.DbReport
 import dev.meshpigeon.cli.core.LinkBook
 import dev.meshpigeon.cli.core.SessionCommands
 import dev.meshpigeon.cli.core.SessionState
@@ -12,6 +14,7 @@ import dev.meshpigeon.cli.journal.InputSource
 import dev.meshpigeon.cli.journal.OutputSink
 import dev.meshpigeon.cli.journal.Session
 import dev.meshpigeon.cli.journal.sessionOf
+import dev.meshpigeon.storage.MeshPigeonStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -31,6 +34,8 @@ public fun buildSession(
     output: OutputSink,
     interactive: Boolean,
     radio: dev.meshpigeon.cli.core.RadioController,
+    links: LinkBook,
+    db: DatabaseStatus,
     home: String,
     profile: String,
     scope: CoroutineScope,
@@ -39,9 +44,8 @@ public fun buildSession(
     val state = SessionState(version = CLI_VERSION, home = home, profile = profile).apply {
         color = interactive
     }
-    val links = LinkBook()
     val tree = SessionCommands(links, CLI_VERSION).tree()
-    return sessionOf(tree, messages, state, radio, input, output, interactive)
+    return sessionOf(tree, messages, state, radio, db, input, output, interactive)
 }
 
 /** The real radio, the real terminal, and the real stdin. */
@@ -57,19 +61,50 @@ public fun runSession(
     // One catalog for the whole session: the renderer resolves the same words
     // the controller refuses a transport with, so they cannot disagree.
     val messages = selectCatalog(listOf(Catalog(LanguageTag.EN, EnglishCatalog.messages)), environmentLanguage())
+    // The app owns the file's lifetime: open it (which locks it), and let go of
+    // the lock on the way out. A session that ended without releasing would
+    // leave the next one refused by a process that no longer exists.
+    val store = MeshPigeonStore.open(home)
     val session = buildSession(
         input = input,
         output = output,
         interactive = interactive,
         radio = CoreRadioController(parentScope = scope, messages = messages),
+        links = LinkBook(store.radios),
+        db = StoreStatus(store),
         home = home,
         profile = profile,
         scope = scope,
         messages = messages,
     )
-    kotlinx.coroutines.runBlocking { session.run() }
-    scope.cancel()
+    try {
+        kotlinx.coroutines.runBlocking { session.run() }
+    } finally {
+        scope.cancel()
+        store.close()
+    }
     onExit(session.exitStatus.code)
+}
+
+/** The open database, as a session's commands see it. */
+private class StoreStatus(private val store: MeshPigeonStore) : DatabaseStatus {
+    // The one place a `DatabaseReport` becomes a `DbReport`: core-storage's
+    // answer about the file, retold in the session's own words so nothing above
+    // the app ever names a core-storage type.
+    override fun report(): DbReport {
+        val report = store.report()
+        return DbReport(
+            path = report.path,
+            sizeBytes = report.sizeBytes,
+            schemaVersion = report.schemaVersion,
+            journalMode = report.journalMode,
+            radios = report.radios,
+            links = report.links,
+            pinsSealed = report.pinsSealed,
+            keyPresent = report.keyPresent,
+            heldByPid = report.heldByPid,
+        )
+    }
 }
 
 /** The language tag every catalog here carries. */
