@@ -58,20 +58,25 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libxcrypt1
       - uses: actions/setup-python@v5
 
-      - name: the firmware simulator (one radio on 8801)
+      - name: "the firmware simulator (two radios — one quiet, one receiving)"
         run: |
           git clone --depth 1 https://github.com/meshpigeon/meshpigeon-firmware.git ../meshpigeon-firmware
           cd ../meshpigeon-firmware
           pio pkg install --global --platform native
           pio run -e sim
 
-      - name: the session against it
+      - name: the session against them
         run: |
-          ../meshpigeon-firmware/.pio/build/sim/program --port 8801 &
+          cd ../meshpigeon-firmware
+          .pio/build/sim/program --port 8801 &
+          # The second one keeps receiving, so the packet store has something in
+          # it and `/radio history` reads real packets rather than an empty list.
+          .pio/build/sim/program --port 8802 --traffic-ms 100 &
           for _ in $(seq 1 30); do
-            nc -z 127.0.0.1 8801 && break
+            nc -z 127.0.0.1 8801 && nc -z 127.0.0.1 8802 && break
             sleep 0.2
           done
+          cd - >/dev/null
           ./gradlew --no-daemon :cli-app:linkMpDebugExecutableLinuxX64
           sh scripts/e2e-sim.sh
 
@@ -79,4 +84,4 @@ jobs:
         if: failure()
         with:
           name: mp-e2e-output
-          path: /tmp/mp-e2e.log
+          path: /tmp/mp-e2e*.log

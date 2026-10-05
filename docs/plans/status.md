@@ -10,7 +10,7 @@ The plan this repository implements:
 | Phase | Status |
 |---|---|
 | P0 scaffolding | done — module layout (`cli-core`, `cli-render`, `cli-i18n`, `cli-journal`, `cli-app`), Clikt + Mordant, the session loop, `/json`, exit statuses, the i18n catalog and its gate, import gate |
-| P1 radio API + TCP | done — `/radio` and `/link` against a real `meshpigeon-sim`, in CI as `scripts/e2e-sim.sh` |
+| P1 radio API + TCP | done — `/radio` and `/link` against a real `meshpigeon-sim`, in CI as `scripts/e2e-sim.sh`: real `DeviceInfo`, a real re-tune, and the packet store read back and purged |
 | P2 USB-CDC + storage | next — `/db`, the stored links, the sealed PIN |
 | P5 the session, polished | not started — the loop, the prompt and the JSON mode are P0/P1; the raw-mode line editor, history, completion and the streaming chat screen are P5 |
 
