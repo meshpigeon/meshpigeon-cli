@@ -54,6 +54,25 @@ public data class ErrorOutput(
     val reason: String,
 ) : CommandOutput
 
+
+/**
+ * A usage error: which command, the usage exit status, and the reason.
+ *
+ * Every usage error is built here so `{command}` is always supplied. A template
+ * whose placeholders do not match the arguments its caller passes renders as
+ * literal `{command}` at the terminal, which reads as a broken command rather
+ * than as a missing argument — and the catalog gate cannot see that, because
+ * from its side the id exists and the placeholders are spelled correctly.
+ */
+public fun usageError(
+    messages: dev.meshpigeon.cli.i18n.Messages,
+    command: String,
+    key: String,
+    vararg args: Pair<String, Any?>,
+): CommandResult = CommandResult(
+    ExitStatus.USAGE,
+    ErrorOutput(command, messages.t(key, "command" to command, *args)),
+)
 /** A plain line of text, for the commands that are just a sentence. */
 public data class TextOutput(val text: String) : CommandOutput
 

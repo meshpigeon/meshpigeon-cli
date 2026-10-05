@@ -79,6 +79,7 @@ public object EnglishCatalog {
         "link.added" to "link {name} → {target}",
         "link.removed" to "link {name} removed",
         "link.unknown" to "no link called {name}",
+        "link.transport_missing" to "no {transport} link in this build yet",
         "link.duplicate" to "a link called {name} already exists",
         "link.list.header" to "{name} · {kind} · {target}",
         // errors and usage

@@ -45,6 +45,19 @@ inside the session; there is no `--json` flag with its own implementation.
 /link    list · add · remove · test
 ```
 
+A link is named once and used as a target, in either direction:
+
+```
+/link add bench tcp://10.0.0.5:5000     # over the network
+/link add desk usb:/dev/ttyACM0         # plugged in
+/radio connect bench
+/radio connect desk
+```
+
+USB-CDC works on the native binary (`termios`), which is what `mp` ships as; on
+the JVM the same link runs over device streams, which is the path Android takes
+with its own endpoint streams.
+
 The rest of the vocabulary (identity, chats, contacts, channels, packets, sync)
 arrives with the service layer; `/help` is generated from the same declaration
 that parses and completes, so the two cannot drift.
@@ -58,6 +71,7 @@ that parses and completes, so the two cannot drift.
 ```
 
 Kotlin 2.2.21 · Clikt 5.0.3 · Mordant 3.0.2 · Linux, macOS and the JVM today.
+Two transports: TCP over a network, and USB-CDC over a serial port.
 `meshpigeon-core` is consumed as a composite build until it is published
 (P8), then as a plain version.
 

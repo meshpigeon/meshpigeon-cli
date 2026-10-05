@@ -236,7 +236,7 @@ public class SessionCommands(
     private suspend fun connect(context: CommandContext, args: List<String>): CommandResult {
         val (target, pin) = resolveTarget(context, args[0], args.getOrNull(1))
         val descriptor = LinkTarget.parse(target)
-            ?: return usage(context, "/radio connect", "usage.unknown_argument", "target" to target)
+            ?: return usage(context, "/radio connect", "usage.unknown_argument", "argument" to target)
         return try {
             val info = context.radio.connect(descriptor, pin)
             links.remember(descriptor)
@@ -382,7 +382,7 @@ public class SessionCommands(
 
     private suspend fun addLink(context: CommandContext, name: String, target: String): CommandResult {
         val descriptor = LinkTarget.parse(target)
-            ?: return usage(context, "/link add", "usage.unknown_argument", "target" to target)
+            ?: return usage(context, "/link add", "usage.unknown_argument", "argument" to target)
         if (links.contains(name)) {
             return failure(context, "/link add", context.messages.t("link.duplicate", "name" to name))
         }
@@ -465,11 +465,18 @@ public class SessionCommands(
         command: String,
         key: String,
         vararg args: Pair<String, Any?>,
-    ): CommandResult = CommandResult(ExitStatus.USAGE, ErrorOutput(command, context.messages.t(key, *args)))
+    ): CommandResult = usageError(context.messages, command, key, *args)
 
-    /** Resolves a link name to its target, so `/radio connect bench` works. */
+    /**
+     * Resolves a link name to its target, so `/radio connect bench` works.
+     *
+     * The saved descriptor is formatted back into canonical text rather than
+     * shown as its label: a label is for a person, and `/dev/ttyACM0` read as a
+     * target is a path with no scheme, which parses as nothing at all.
+     */
     private fun resolveTarget(context: CommandContext, name: String, pin: String?): Pair<String, String?> =
-        links.all().firstOrNull { it.name == name }?.let { linkLabel(it.descriptor) to (pin ?: links.pinFor(name)) }
+        links.all().firstOrNull { it.name == name }
+            ?.let { LinkTarget.format(it.descriptor) to (pin ?: links.pinFor(name)) }
             ?: (name to pin)
 
     private fun tuningSummary(context: CommandContext, tuning: Tuning): String = context.messages.t(

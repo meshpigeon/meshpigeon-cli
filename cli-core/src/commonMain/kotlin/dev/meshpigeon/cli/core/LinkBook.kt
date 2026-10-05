@@ -82,9 +82,29 @@ public object LinkTarget {
         if (port !in 1..65_535) return null
         return LinkDescriptor.Tcp(host, port)
     }
+
+    /**
+     * The canonical text for [descriptor] — the one [parse] reads back.
+     *
+     * This is deliberately not [linkLabel]. A label is for a person (`10.0.0.5`
+     * is friendlier than `tcp://10.0.0.5:5000`), and a device path has no scheme
+     * at all, so a label that is handed back to [parse] is a bare path that
+     * parses as nothing. The scheme is what makes each kind round-trip.
+     */
+    public fun format(descriptor: LinkDescriptor): String = when (descriptor) {
+        is LinkDescriptor.Tcp -> "tcp://${descriptor.host}:${descriptor.port}"
+        is LinkDescriptor.Usb -> "usb:${descriptor.devicePath}"
+        is LinkDescriptor.Ble -> "ble:${descriptor.endpointId}"
+    }
 }
 
-/** How a link reads to a person. */
+/**
+ * How a link reads to a person.
+ *
+ * This is display: `10.0.0.5:5000`, `/dev/ttyACM0`. For something that has to
+ * be read *back* — a saved name, a script, another command — use
+ * [LinkTarget.format], which round-trips through [LinkTarget.parse].
+ */
 public fun linkLabel(descriptor: LinkDescriptor): String = when (descriptor) {
     is LinkDescriptor.Tcp -> "${descriptor.host}:${descriptor.port}"
     is LinkDescriptor.Usb -> descriptor.devicePath

@@ -17,6 +17,7 @@ import dev.meshpigeon.core.transport.SessionConfig
 import dev.meshpigeon.core.transport.StoredPacket
 import dev.meshpigeon.core.transport.Tuning
 import dev.meshpigeon.core.link.tcp.TcpRadioLink
+import dev.meshpigeon.core.link.usb.UsbRadioLink
 import dev.meshpigeon.cli.i18n.Messages
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -95,13 +96,21 @@ public class CoreRadioController(
     private val sessionConfig: SessionConfig = SessionConfig(),
     private val parentScope: CoroutineScope,
     /**
+     * The catalog this session renders with.
+     *
+     * It is here because refusing a transport the build does not carry is a
+     * sentence a person reads ("no BLE link in this build yet"), and a client
+     * holds no user-facing strings — so the sentence is asked for, not written.
+     */
+    private val messages: Messages,
+    /**
      * How a target becomes a link.
      *
-     * A seam, not a plugin point: production passes [tcpLinks] and gets exactly
+     * A seam, not a plugin point: production passes [linkFor] and gets exactly
      * the transports this build has, and a test passes a fake radio so the whole
      * command path — parse, session, frames, render — runs headlessly.
      */
-    private val linkFactory: (LinkDescriptor) -> RadioLink = ::tcpLink,
+    private val linkFactory: (LinkDescriptor) -> RadioLink = { descriptor -> linkFor(descriptor, messages) },
 ) : RadioController {
     private var session: RadioSession? = null
 
@@ -242,11 +251,21 @@ public class SessionState(
 /**
  * The links this build can open.
  *
- * TCP only, because `core-link-tcp` is the only link module compiled in; USB
- * and BLE arrive with their own modules (P2) and appear here the day they do.
- * A target this build cannot serve is refused with the reason, not attempted.
+ * TCP over a network and USB CDC over a serial port, in the plan's order. BLE
+ * has no link module yet, so a BLE target is refused with the reason rather
+ * than attempted: a link that cannot open should say why, not time out.
+ *
+ * [messages] is here because the refusal is a sentence a person reads, and a
+ * client holds no user-facing strings — [LinkBook.kindName] is what reports
+ * which kind a descriptor is, so the message says "BLE" rather than "a link".
  */
-public fun tcpLink(descriptor: LinkDescriptor): RadioLink = when (descriptor) {
+public fun linkFor(
+    descriptor: LinkDescriptor,
+    messages: dev.meshpigeon.cli.i18n.Messages,
+): RadioLink = when (descriptor) {
     is LinkDescriptor.Tcp -> TcpRadioLink(descriptor)
-    else -> throw IllegalArgumentException("tcp links only in this build: ${descriptor::class.simpleName}")
+    is LinkDescriptor.Usb -> UsbRadioLink(descriptor)
+    is LinkDescriptor.Ble -> throw IllegalArgumentException(
+        messages.t("link.transport_missing", "transport" to descriptor.kindName().uppercase()),
+    )
 }

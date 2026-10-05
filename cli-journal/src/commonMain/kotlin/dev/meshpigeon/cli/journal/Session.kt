@@ -7,6 +7,7 @@ import dev.meshpigeon.cli.core.CommandSpec
 import dev.meshpigeon.cli.core.CommandTree
 import dev.meshpigeon.cli.core.EmptyOutput
 import dev.meshpigeon.cli.core.ExitStatus
+import dev.meshpigeon.cli.core.usageError
 import dev.meshpigeon.cli.core.Resolution
 import dev.meshpigeon.cli.core.SessionState
 import dev.meshpigeon.cli.i18n.Messages
@@ -87,24 +88,22 @@ public class Session(
             is Resolution.MissingArgument -> Triple(
                 resolution.command,
                 NoSpec,
-                CommandResult(
-                    ExitStatus.USAGE,
-                    dev.meshpigeon.cli.core.ErrorOutput(
-                        resolution.command,
-                        context.messages.t("usage.missing_argument", "argument" to resolution.argument),
-                    ),
+                usageError(
+                    context.messages,
+                    resolution.command,
+                    "usage.missing_argument",
+                    "argument" to resolution.argument,
                 ),
             )
 
             is Resolution.UnexpectedArgument -> Triple(
                 resolution.command,
                 NoSpec,
-                CommandResult(
-                    ExitStatus.USAGE,
-                    dev.meshpigeon.cli.core.ErrorOutput(
-                        resolution.command,
-                        context.messages.t("usage.unknown_argument", "argument" to resolution.argument),
-                    ),
+                usageError(
+                    context.messages,
+                    resolution.command,
+                    "usage.unknown_argument",
+                    "argument" to resolution.argument,
                 ),
             )
 

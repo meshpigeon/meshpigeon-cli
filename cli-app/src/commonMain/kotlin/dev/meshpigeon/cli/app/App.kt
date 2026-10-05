@@ -34,8 +34,8 @@ public fun buildSession(
     home: String,
     profile: String,
     scope: CoroutineScope,
+    messages: dev.meshpigeon.cli.i18n.Messages = selectCatalog(listOf(Catalog(LanguageTag.EN, EnglishCatalog.messages)), environmentLanguage()),
 ): Session {
-    val messages = selectCatalog(listOf(Catalog(Messages.EN, EnglishCatalog.messages)), environmentLanguage())
     val state = SessionState(version = CLI_VERSION, home = home, profile = profile).apply {
         color = interactive
     }
@@ -54,14 +54,18 @@ public fun runSession(
     onExit: (Int) -> Unit = {},
 ) {
     val scope = CoroutineScope(SupervisorJob())
+    // One catalog for the whole session: the renderer resolves the same words
+    // the controller refuses a transport with, so they cannot disagree.
+    val messages = selectCatalog(listOf(Catalog(LanguageTag.EN, EnglishCatalog.messages)), environmentLanguage())
     val session = buildSession(
         input = input,
         output = output,
         interactive = interactive,
-        radio = CoreRadioController(parentScope = scope),
+        radio = CoreRadioController(parentScope = scope, messages = messages),
         home = home,
         profile = profile,
         scope = scope,
+        messages = messages,
     )
     kotlinx.coroutines.runBlocking { session.run() }
     scope.cancel()
@@ -69,7 +73,7 @@ public fun runSession(
 }
 
 /** The language tag every catalog here carries. */
-private object Messages {
+private object LanguageTag {
     const val EN: String = "en"
 }
 

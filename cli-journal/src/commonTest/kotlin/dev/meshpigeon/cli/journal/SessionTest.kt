@@ -48,7 +48,11 @@ class SessionTest {
             tree = SessionCommands(LinkBook(), "test").tree(),
             context = CommandContext(
                 messages = messages,
-                radio = CoreRadioController(parentScope = scope, linkFactory = linkFactory ?: { radio.link }),
+                radio = CoreRadioController(
+                    parentScope = scope,
+                    messages = messages,
+                    linkFactory = linkFactory ?: { radio.link },
+                ),
                 state = state,
             ),
             input = { script.drop(consumed.size).firstOrNull().also { if (it != null) consumed += it } },
@@ -58,6 +62,30 @@ class SessionTest {
         runBlocking { session.run() }
         scope.cancel()
         return Run(session, output)
+    }
+
+    @Test
+    fun a_usage_error_never_shows_an_unfilled_placeholder() {
+        // A message whose placeholders do not match the arguments a caller
+        // passes renders as "{command} does not take {argument}" — a missing
+        // translation that looks like a broken command. The catalog gate can
+        // see that an id exists; only driving the commands can see this.
+        val run = drive(
+            listOf(
+                "/radio connect nonsense",
+                "/link add bench nonsense",
+                "/radio history not-a-number",
+                "/radio retune not-a-frequency",
+                "/link remove",
+                "/nonsense",
+            ),
+        )
+        val said = run.output.joinToString("\n")
+        assertFalse(
+            said.contains("{"),
+            "an unfilled placeholder reached the terminal:\n$said",
+        )
+        assertEquals(ExitStatus.USAGE, run.session.exitStatus)
     }
 
     @Test

@@ -133,6 +133,29 @@ class LinkTargetTest {
         assertEquals(null, LinkTarget.parse("host:notaport"))
         assertEquals(null, LinkTarget.parse("tcp://host"))
     }
+
+    @Test
+    fun every_link_kind_survives_being_written_and_read_back() {
+        // A saved link name is resolved by formatting the descriptor and parsing
+        // it again. A label cannot do that: `/dev/ttyACM0` has no scheme, so it
+        // reads back as nothing — which is a bug a TCP-only build never sees.
+        val descriptors = listOf(
+            LinkDescriptorRef.tcp("10.0.0.5", 5000),
+            LinkDescriptorRef.usb("/dev/ttyACM0"),
+        )
+        for (descriptor in descriptors) {
+            val text = LinkTarget.format(descriptor)
+            assertEquals(descriptor, LinkTarget.parse(text), "$descriptor did not round-trip as $text")
+        }
+    }
+
+    @Test
+    fun a_label_is_not_a_target() {
+        // The distinction is the point: the label reads better, and the canonical
+        // form is what has to survive a round trip.
+        assertEquals("/dev/ttyACM0", linkLabel(LinkDescriptorRef.usb("/dev/ttyACM0")))
+        assertEquals("usb:/dev/ttyACM0", LinkTarget.format(LinkDescriptorRef.usb("/dev/ttyACM0")))
+    }
 }
 
 /** Terse constructors, so the tests read as data. */
