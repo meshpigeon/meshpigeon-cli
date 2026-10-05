@@ -1,0 +1,135 @@
+package dev.meshpigeon.cli.i18n
+
+/**
+ * The built-in English catalog: the seed every other language is written
+ * against. A second locale arrives at P8 to prove the path.
+ */
+public object EnglishCatalog {
+    public val messages: Map<String, String> = mapOf(
+        // command summaries (one per command, shown by /help)
+        "cmd.help" to "list the commands",
+        "cmd.quit" to "leave the session",
+        "cmd.version" to "print the version",
+        "cmd.json" to "switch JSON output on or off",
+        "cmd.color" to "switch colour on or off",
+        "cmd.clear" to "clear the screen",
+        "cmd.doctor" to "show what this session knows about itself",
+        "cmd.radio.connect" to "open a link to a radio",
+        "cmd.radio.disconnect" to "close the link",
+        "cmd.radio.info" to "show what the radio says about itself",
+        "cmd.radio.status" to "show connection status",
+        "cmd.radio.auth" to "authenticate with the device PIN",
+        "cmd.radio.tuning" to "show the radio's tuning",
+        "cmd.radio.retune" to "change the radio's tuning",
+        "cmd.radio.settings" to "show the device settings",
+        "cmd.radio.history" to "list the packets the radio holds",
+        "cmd.radio.purge" to "clear the radio's packet store",
+        "cmd.radio.reboot" to "restart the radio",
+        "cmd.radio.factory-reset" to "reset the radio to as it shipped",
+        "cmd.link.list" to "list the configured links",
+        "cmd.link.add" to "add a link",
+        "cmd.link.remove" to "remove a link",
+        "cmd.link.test" to "open a link and report what it says",
+        "cmd.radio" to "the radios this session can reach",
+        "cmd.link" to "the links this session knows about",
+        // session
+        "session.banner" to "MeshPigeon {version} · {identity} · {radio}",
+        "session.banner.identity.none" to "no identity",
+        "session.banner.radio.none" to "no radio",
+        "session.prompt" to "mp ▸ ",
+        "session.bye" to "bye",
+        "session.unknown_command" to "unknown command {command} — try /help",
+        // help
+        "help.footer" to "/help lists the commands · /quit leaves",
+        // chat (P4): the vocabulary the messaging screen renders with
+        "chat.message.one" to "{count} message",
+        "chat.message.many" to "{count} messages",
+        "chat.online.one" to "{count} online",
+        "chat.online.many" to "{count} online",
+        "chat.sending" to "sending…",
+        "chat.delivered" to "delivered · rtt {rtt}",
+        // radio
+        "radio.none" to "no radio is connected",
+        "radio.connected" to "connected to {name} ({board})",
+        "radio.connect.failed" to "could not connect to {target}: {reason}",
+        "radio.disconnected" to "disconnected",
+        "radio.tuning" to "{frequency} · bandwidth {bandwidth} · sf {spreadingFactor} · cr {codingRate} · {power} dBm (epoch {epoch})",
+        "radio.tuning.applied" to "the radio now runs {summary}",
+        "radio.tuning.unchanged" to "the radio already ran those settings",
+        "radio.history" to "{count} packets, {delivered} delivered",
+        "radio.history.empty" to "the radio is holding no packets",
+        "radio.purged" to "the packet store was cleared",
+        "radio.auth.ok" to "the radio accepted the PIN",
+        "radio.auth.refused" to "the radio refused the PIN",
+        "radio.auth.not_required" to "this radio needs no PIN",
+        "radio.rebooting" to "the radio is restarting",
+        "radio.factory_reset" to "the radio was reset and is restarting",
+        "radio.observed" to "saw {raw} ({origin}, rssi {rssi}, snr {snr})",
+        "radio.event.retuned" to "another client re-tuned the radio: {summary}",
+        "radio.event.settings" to "another client changed the device settings",
+        "radio.event.reported" to "the radio reported {reason}",
+        "radio.phase.disconnected" to "disconnected",
+        "radio.phase.connecting" to "connecting",
+        "radio.phase.handshaking" to "handshaking",
+        "radio.phase.ready" to "ready",
+        "radio.phase.reconnecting" to "reconnecting (attempt {attempt} in {delay})",
+        "radio.phase.failed" to "failed: {reason}",
+        // links
+        "link.none" to "no links are configured",
+        "link.added" to "link {name} → {target}",
+        "link.removed" to "link {name} removed",
+        "link.unknown" to "no link called {name}",
+        "link.duplicate" to "a link called {name} already exists",
+        "link.list.header" to "{name} · {kind} · {target}",
+        // errors and usage
+        "error.timeout" to "{what} timed out after {after}",
+        "usage.missing_argument" to "{command} needs {argument}",
+        "usage.unknown_argument" to "{command} does not take {argument}",
+        "usage.unknown_command" to "{command} is not a command — try /help",
+        // output
+        "output.json_disabled" to "JSON output is off",
+        "output.json_enabled" to "JSON output is on",
+        "output.color_enabled" to "colour is on",
+        "output.color_disabled" to "colour is off",
+        "output.version" to "meshpigeon-cli {version}",
+        // labels: the words beside a value, in every table the renderers draw
+        "label.board" to "board",
+        "label.firmware" to "firmware",
+        "label.spec" to "spec",
+        "label.uptime" to "uptime",
+        "label.boots" to "boots",
+        "label.battery" to "battery",
+        "label.noise-floor" to "noise floor",
+        "label.radio" to "radio",
+        "label.packets-held" to "packets held",
+        "label.dropped" to "dropped",
+        "label.capabilities" to "capabilities",
+        "label.wifi" to "Wi-Fi",
+        "label.ble-clients" to "BLE clients",
+        "label.usb-clients" to "USB clients",
+        "label.tcp-clients" to "TCP clients",
+        "label.frequency" to "frequency",
+        "label.bandwidth" to "bandwidth",
+        "label.spreading-factor" to "spreading factor",
+        "label.coding-rate" to "coding rate",
+        "label.power" to "power",
+        "label.epoch" to "epoch",
+        "label.name" to "name",
+        "label.passphrase" to "passphrase",
+        "label.version" to "version",
+        "label.language" to "language",
+        "label.profile" to "profile",
+        "label.home" to "home",
+        "label.json" to "json",
+        "label.color" to "color",
+        "label.phase" to "phase",
+        "label.links" to "links",
+    )
+}
+
+/**
+ * The catalog English starts from, with the runtime messages a session needs
+ * filled in. `mp` adds its own ids at start-up; nothing else may.
+ */
+public fun defaultMessages(): Messages =
+    Messages(language = "en", catalogs = listOf(Catalog("en", EnglishCatalog.messages)))

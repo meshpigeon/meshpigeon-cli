@@ -1,0 +1,82 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: mp builds and its gates pass
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          # meshpigeon-core lives next door until it is published to Central
+          # (P8); until then the two develop through a composite build.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: libcrypt (the native binary links it on Linux)
+        run: sudo apt-get update && sudo apt-get install -y libxcrypt1
+
+      - run: ./gradlew --no-daemon build
+
+      - name: the gates
+        run: |
+          sh scripts/check-imports.sh
+          sh scripts/check-i18n.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mp-binaries
+          path: |
+            cli-app/build/bin/**/mp.kexe
+            cli-app/build/bin/**/mp.exe
+            cli-app/build/bin/**/mp
+          if-no-files-found: error
+
+  e2e-sim:
+    name: a real radio, through a script
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: libcrypt (the native binary links it on Linux)
+        run: sudo apt-get update && sudo apt-get install -y libxcrypt1
+      - uses: actions/setup-python@v5
+
+      - name: the firmware simulator (one radio on 8801)
+        run: |
+          git clone --depth 1 https://github.com/meshpigeon/meshpigeon-firmware.git ../meshpigeon-firmware
+          cd ../meshpigeon-firmware
+          pio pkg install --global --platform native
+          pio run -e sim
+
+      - name: the session against it
+        run: |
+          ../meshpigeon-firmware/.pio/build/sim/program --port 8801 &
+          for _ in $(seq 1 30); do
+            nc -z 127.0.0.1 8801 && break
+            sleep 0.2
+          done
+          ./gradlew --no-daemon :cli-app:linkMpDebugExecutableLinuxX64
+          sh scripts/e2e-sim.sh
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: mp-e2e-output
+          path: /tmp/mp-e2e.log
